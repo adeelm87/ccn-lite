@@ -37,7 +37,7 @@
 #define CCNL_BROADCAST_OCTET            0xFF
 
 #if defined(CCNL_ARDUINO) || defined(CCNL_RIOT)
-# define CCNL_MAX_INTERFACES             1
+# define CCNL_MAX_INTERFACES             2
 # define CCNL_MAX_IF_QLEN                14
 # define CCNL_MAX_PACKET_SIZE            120
 # define CCNL_MAX_ADDRESS_LEN            8

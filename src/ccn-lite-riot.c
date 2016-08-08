@@ -211,6 +211,22 @@ ccnl_open_netif(kernel_pid_t if_pid, gnrc_nettype_t netreg_type)
     if (!gnrc_netif_exist(if_pid)) {
         return -1;
     }
+    
+    /* Check if maximum interface reached */
+    if(ccnl_relay.ifcount >= CCNL_MAX_INTERFACES) {
+    	DEBUGMSG(DEBUG, "Maximum cnl_relay interfaces reached\n");
+    	return -1;
+    }
+
+    /* Check if the interface already exists in the ccnl_relay.ifs[] */
+    int j;
+    /* iterate over interfaces */
+    for (j = 0; j < ccnl_relay.ifcount; j++) {
+    	if (ccnl_relay.ifs[j].if_pid == if_pid) {
+    		DEBUGMSG(DEBUG, "This interface has already been added to ccnl_relay\n");
+    		return 0;
+    	}
+    }
 
     /* get current interface from CCN-Lite's relay */
     struct ccnl_if_s *i;
@@ -228,10 +244,7 @@ ccnl_open_netif(kernel_pid_t if_pid, gnrc_nettype_t netreg_type)
 
     /* configure the interface to use the specified nettype protocol */
     gnrc_netapi_set(if_pid, NETOPT_PROTO, 0, &netreg_type, sizeof(gnrc_nettype_t));
-    /* register for this nettype */
-    _ccnl_ne.demux_ctx =  GNRC_NETREG_DEMUX_CTX_ALL;
-    _ccnl_ne.pid = _ccnl_event_loop_pid;
-    return gnrc_netreg_register(netreg_type, &_ccnl_ne);
+    return 0;
 }
 
 /* (link layer) sending function */
@@ -420,6 +433,11 @@ ccnl_start(void)
                                           THREAD_PRIORITY_MAIN - 1,
                                           THREAD_CREATE_STACKTEST, _ccnl_event_loop,
                                           &ccnl_relay, "ccnl");
+    /* register for this nettype */
+    _ccnl_ne.demux_ctx =  GNRC_NETREG_DEMUX_CTX_ALL;
+    _ccnl_ne.pid = _ccnl_event_loop_pid;
+    gnrc_netreg_register(GNRC_NETTYPE_CCN, &_ccnl_ne);
+
     return _ccnl_event_loop_pid;
 }
 

@@ -1041,7 +1041,7 @@ ccnl_fib_show(struct ccnl_relay_s *relay)
                                      ccnl_suite2str(fwd->suite), (int)
                                      /* TODO: show correct interface instead of always 0 */
 #ifdef CCNL_RIOT
-                                     (relay->ifs[0]).if_pid,
+	                             fwd->face->ifndx,
 #else
                                      (relay->ifs[0]).sock,
 #endif

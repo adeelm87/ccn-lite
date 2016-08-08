@@ -56,7 +56,7 @@ ccnl_addr_cmp(sockunion *s1, sockunion *s2)
 #ifdef USE_LINKLAYER
         case AF_PACKET:
             return memcmp(s1->linklayer.sll_addr, s2->linklayer.sll_addr,
-                          s1->linklayer.sll_halen);
+                          s1->linklayer.sll_halen > s2->linklayer.sll_halen ? s1->linklayer.sll_halen : s2->linklayer.sll_halen);
 #endif
 #ifdef USE_IPV4
         case AF_INET:

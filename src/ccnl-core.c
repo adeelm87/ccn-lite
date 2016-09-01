@@ -325,12 +325,14 @@ ccnl_face_CTS(struct ccnl_relay_s *ccnl, struct ccnl_face_s *f)
     DEBUGMSG_CORE(TRACE, "CTS face=%p sched=%p\n", (void*)f, (void*)f->sched);
 
     /* Extracting ccnl_if_s * from ccnl_face_s */
+    struct ccnl_if_s *ccnl_if_ptr = ccnl->ifs + f->ifndx;
+#ifdef CCNL_RIOT
     int i;
-    struct ccnl_if_s *ccnl_if_ptr = ccnl->ifs;
     for(i = 0; i < ccnl->ifcount; i++) {
     	if(ccnl->ifs[i].if_pid == f->ifndx)
     		ccnl_if_ptr = &(ccnl->ifs[i]);
     }
+#endif
 
     if (!f->frag || f->frag->protocol == CCNL_FRAG_NONE) {
         buf = ccnl_face_dequeue(ccnl, f);

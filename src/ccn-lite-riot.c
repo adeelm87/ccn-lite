@@ -373,7 +373,7 @@ _receive(struct ccnl_relay_s *ccnl, msg_t *m)
     memcpy(&su.linklayer.sll_addr, gnrc_netif_hdr_get_src_addr(nethdr), nethdr->src_l2addr_len);
 
     /* call CCN-lite callback and free memory in packet buffer */
-    ccnl_core_RX(ccnl, i, ccn_pkt->data, ccn_pkt->size, &su.sa, sizeof(su.sa));
+    ccnl_core_RX(ccnl, ccnl->ifs[i].if_pid, ccn_pkt->data, ccn_pkt->size, &su.sa, sizeof(su.sa));
     gnrc_pktbuf_release(pkt);
 }
 

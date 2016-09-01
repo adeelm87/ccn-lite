@@ -324,11 +324,19 @@ ccnl_face_CTS(struct ccnl_relay_s *ccnl, struct ccnl_face_s *f)
     struct ccnl_buf_s *buf;
     DEBUGMSG_CORE(TRACE, "CTS face=%p sched=%p\n", (void*)f, (void*)f->sched);
 
+    /* Extracting ccnl_if_s * from ccnl_face_s */
+    int i;
+    struct ccnl_if_s *ccnl_if_ptr = ccnl->ifs;
+    for(i = 0; i < ccnl->ifcount; i++) {
+    	if(ccnl->ifs[i].if_pid == f->ifndx)
+    		ccnl_if_ptr = &(ccnl->ifs[i]);
+    }
+
     if (!f->frag || f->frag->protocol == CCNL_FRAG_NONE) {
         buf = ccnl_face_dequeue(ccnl, f);
         if (buf)
             ccnl_interface_enqueue(ccnl_face_CTS_done, f,
-                                   ccnl, ccnl->ifs + f->ifndx, buf, &f->peer);
+                                   ccnl, ccnl_if_ptr, buf, &f->peer);
     }
 #ifdef USE_FRAG
     else {

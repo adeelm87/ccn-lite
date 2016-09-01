@@ -35,7 +35,9 @@ struct ccnl_interest_s *ccnl_interest_remove(struct ccnl_relay_s *ccnl, struct c
 int ccnl_i_prefixof_c(struct ccnl_prefix_s *prefix, int minsuffix, int maxsuffix, struct ccnl_content_s *c);
 struct ccnl_content_s *ccnl_content_new(struct ccnl_relay_s *ccnl, struct ccnl_pkt_s **pkt);
 struct ccnl_content_s *ccnl_content_remove(struct ccnl_relay_s *ccnl, struct ccnl_content_s *c);
+int ccnl_flush_cache(struct ccnl_relay_s *ccnl);
 struct ccnl_content_s *ccnl_content_add2cache(struct ccnl_relay_s *ccnl, struct ccnl_content_s *c);
+int ccnl_chunked_content_add2cache(struct ccnl_relay_s *ccnl, int suite, char *url, char *huge_content, int huge_content_len, int chunk_payload_size);
 int ccnl_content_serve_pending(struct ccnl_relay_s *ccnl, struct ccnl_content_s *c);
 void ccnl_do_ageing(void *ptr, void *dummy);
 int ccnl_nonce_find_or_append(struct ccnl_relay_s *ccnl, struct ccnl_buf_s *nonce);

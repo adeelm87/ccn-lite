@@ -165,7 +165,8 @@ ccnl_extractDataAndChunkInfo(unsigned char **data, int *datalen,
     *lastchunknum = pkt->val.final_block_id;
     *content = pkt->content;
     *contentlen = pkt->contlen;
-    free_packet(pkt);
+    /* The following line is a bug, hence commented out */
+    //free_packet(pkt);
 
     return 0;
 }

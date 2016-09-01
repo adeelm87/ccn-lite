@@ -34,6 +34,10 @@ int ccnl_prefix_cmp(struct ccnl_prefix_s *name, unsigned char *md,
                     struct ccnl_prefix_s *p, int mode);
 int ccnl_i_prefixof_c(struct ccnl_prefix_s *prefix, int minsuffix,
                       int maxsuffix, struct ccnl_content_s *c);
+struct ccnl_prefix_s * ccnl_URItoPrefix(char* uri, int suite, char *nfnexpr, unsigned int *chunknum);
+struct ccnl_pkt_s* ccnl_ccntlv_bytes2pkt(unsigned char *start, unsigned char **data, int *datalen);
+int ccnl_ccntlv_prependContentWithHdr(struct ccnl_prefix_s *name, unsigned char *payload, int paylen, unsigned int *lastchunknum, int *contentpos, int *offset, unsigned char *buf);
+int ccnl_ccntlv_getHdrLen(unsigned char *data, int len);
 
 // ----------------------------------------------------------------------
 // datastructure support functions
@@ -686,6 +690,15 @@ ccnl_content_remove(struct ccnl_relay_s *ccnl, struct ccnl_content_s *c)
     return c2;
 }
 
+int
+ccnl_flush_cache(struct ccnl_relay_s *ccnl) {
+	int flushedcnt = ccnl->contentcnt;
+	while(ccnl->contentcnt > 0)
+		ccnl_content_remove(ccnl, ccnl->contents);
+
+	return flushedcnt;
+}
+
 struct ccnl_content_s*
 ccnl_content_add2cache(struct ccnl_relay_s *ccnl, struct ccnl_content_s *c)
 {
@@ -733,6 +746,89 @@ ccnl_content_add2cache(struct ccnl_relay_s *ccnl, struct ccnl_content_s *c)
         return NULL;
     }
     return c;
+}
+
+int
+ccnl_chunked_content_add2cache(struct ccnl_relay_s *ccnl, int suite, char *url, char *huge_content, int huge_content_len, int chunk_payload_size) {
+
+	char chunk_without_hdr[chunk_payload_size];
+	int chunk_without_hdr_len;
+	/* 100 has been added for the CCN headers, make this neater later */
+	unsigned char chunk_with_hdr[chunk_payload_size + 100];
+	int chunk_with_hdr_len;
+
+	struct ccnl_prefix_s *name;
+	unsigned int chunknum = 0;
+	int is_last = 0;
+	int offs;
+
+	unsigned int index = 0;
+	while( !is_last && (index < huge_content_len) ) {
+		offs = chunk_payload_size + 100;
+
+		if(index + chunk_payload_size <= huge_content_len)
+			chunk_without_hdr_len = chunk_payload_size;
+		else {
+			chunk_without_hdr_len = huge_content_len - index;
+			is_last = 1;
+		}
+
+		strncpy(chunk_without_hdr, huge_content + index, chunk_without_hdr_len);
+		index += chunk_without_hdr_len;
+
+		name = ccnl_URItoPrefix(url, suite, NULL, &chunknum);
+
+		/* Silencing warning errors */
+		(void)chunk_with_hdr;
+		(void)chunk_with_hdr_len;
+		(void)offs;
+		(void)name;
+
+		switch (suite) {
+#ifdef USE_SUITE_CCNTLV
+		case CCNL_SUITE_CCNTLV: {
+			chunk_with_hdr_len = ccnl_ccntlv_prependContentWithHdr(	name,
+															(unsigned char *)chunk_without_hdr,
+															chunk_without_hdr_len,
+															is_last ? &chunknum : NULL,
+															NULL,
+															&offs,
+															chunk_with_hdr);
+
+			struct ccnl_pkt_s *ccnl_pkt = NULL;
+
+			/* Is this really fixed header? Check. It is 8 bytes in size */
+			int fxdhdrlen = ccnl_ccntlv_getHdrLen(&chunk_with_hdr[offs], chunk_with_hdr_len);
+			unsigned char *chunk_without_fxdhdr = &chunk_with_hdr[offs + fxdhdrlen];
+			int chunk_without_fxdhdr_len = chunk_with_hdr_len;
+			chunk_without_fxdhdr_len -= fxdhdrlen;
+
+			ccnl_pkt = ccnl_ccntlv_bytes2pkt(	&chunk_with_hdr[offs],
+												&chunk_without_fxdhdr,
+												&chunk_without_fxdhdr_len);
+
+			struct ccnl_content_s *c = 0;
+			c = ccnl_content_new(ccnl, &ccnl_pkt);
+			if (!c) {
+				DEBUGMSG(WARNING, "could not create content\n");
+				return -1;
+			}
+
+			ccnl_content_add2cache(ccnl, c);
+			c->flags |= CCNL_CONTENT_FLAGS_STATIC;
+
+			break;
+		}
+#endif
+		default:
+			DEBUGMSG(ERROR, "produce for suite %i is not implemented\n", suite);
+			return -1;
+
+		}
+		chunknum++;
+	}
+
+	return 0;
 }
 
 // deliver new content c to all clients with (loosely) matching interest,

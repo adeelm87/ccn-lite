@@ -315,7 +315,7 @@ usage:
 
     // For CCNTLV always start with the first chunk because of exact content match
     // This means it can only fetch chunked data and not single content-object data
-    if (suite == CCNL_SUITE_CCNTLV || suite == CCNL_SUITE_CISTLV) {
+    if (suite == CCNL_SUITE_CCNTLV || suite == CCNL_SUITE_CISTLV || suite == CCNL_SUITE_NDNTLV) {
         curchunknum = ccnl_malloc(sizeof(unsigned int));
         *curchunknum = 0;
     }

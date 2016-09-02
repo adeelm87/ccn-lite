@@ -23,6 +23,7 @@
  */
 
 #include "ccnl-ext.h"
+#include "ccnl-pkt-ndntlv.h"
 
 #ifndef USE_NFN
 # define ccnl_nfn_interest_remove(r,i)  ccnl_interest_remove(r,i)
@@ -38,6 +39,9 @@ struct ccnl_prefix_s * ccnl_URItoPrefix(char* uri, int suite, char *nfnexpr, uns
 struct ccnl_pkt_s* ccnl_ccntlv_bytes2pkt(unsigned char *start, unsigned char **data, int *datalen);
 int ccnl_ccntlv_prependContentWithHdr(struct ccnl_prefix_s *name, unsigned char *payload, int paylen, unsigned int *lastchunknum, int *contentpos, int *offset, unsigned char *buf);
 int ccnl_ccntlv_getHdrLen(unsigned char *data, int len);
+struct ccnl_pkt_s* ccnl_ndntlv_bytes2pkt(unsigned int pkttype, unsigned char *start, unsigned char **data, int *datalen);
+int ccnl_ndntlv_prependContent(struct ccnl_prefix_s *name, unsigned char *payload, int paylen, int *contentpos, unsigned int *final_block_id, int *offset, unsigned char *buf);
+int ccnl_ndntlv_dehead(unsigned char **buf, int *len, int *typ, int *vallen);
 
 // ----------------------------------------------------------------------
 // datastructure support functions
@@ -827,6 +831,45 @@ ccnl_chunked_content_add2cache(struct ccnl_relay_s *ccnl, int suite, char *url, 
 			ccnl_content_add2cache(ccnl, c);
 			c->flags |= CCNL_CONTENT_FLAGS_STATIC;
 
+	        free_packet(ccnl_pkt);
+			break;
+		}
+#endif
+#ifdef USE_SUITE_NDNTLV
+		case CCNL_SUITE_NDNTLV: {
+			chunk_with_hdr_len = ccnl_ndntlv_prependContent(name,
+			                                 (unsigned char *)chunk_without_hdr,
+											 chunk_without_hdr_len,
+			                                 NULL,
+											 is_last ? &chunknum : NULL,
+			                                 &offs,
+											 chunk_with_hdr);
+
+			struct ccnl_pkt_s *ccnl_pkt = NULL;
+
+			unsigned int typ;
+			int len;
+
+			unsigned char *chunk_without_fxdhdr = &chunk_with_hdr[offs];
+			int chunk_without_fxdhdr_len = chunk_with_hdr_len;
+
+			if (ccnl_ndntlv_dehead(&chunk_without_fxdhdr, &chunk_without_fxdhdr_len, (int*)&typ, &len) || typ != NDN_TLV_Data) {
+				DEBUGMSG(WARNING, "not a content object\n");
+				break;
+			}
+			ccnl_pkt = ccnl_ndntlv_bytes2pkt(typ, &chunk_with_hdr[offs], &chunk_without_fxdhdr, &chunk_without_fxdhdr_len);
+
+			struct ccnl_content_s *c = 0;
+			c = ccnl_content_new(ccnl, &ccnl_pkt);
+			if (!c) {
+				DEBUGMSG(WARNING, "could not create content\n");
+				return -1;
+			}
+
+			ccnl_content_add2cache(ccnl, c);
+			c->flags |= CCNL_CONTENT_FLAGS_STATIC;
+
+			free_packet(ccnl_pkt);
 			break;
 		}
 #endif

@@ -56,6 +56,7 @@ int inet_aton(const char *cp, struct in_addr *inp);
 #define USE_IPV4
 #define USE_SUITE_NDNTLV
 #define NEEDS_PREFIX_MATCHING
+#define NEEDS_PACKET_CRAFTING
 
 // ----------------------------------------------------------------------
 // "replacement lib"

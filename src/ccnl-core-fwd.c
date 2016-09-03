@@ -163,6 +163,7 @@ ccnl_fwd_handleInterest(struct ccnl_relay_s *relay, struct ccnl_face_s *from,
                   ccnl_suite2str((*pkt)->suite),
                   ccnl_addr2ascii(from ? &from->peer : NULL));
 
+#ifdef SENSOR_DEV
     /*
      * Step 0: If a request is received for a certain prefix,
      * clear cache first. Then populate cache.
@@ -179,7 +180,7 @@ ccnl_fwd_handleInterest(struct ccnl_relay_s *relay, struct ccnl_face_s *from,
     	char url[] = "/ericsson";
     	ccnl_chunked_content_add2cache(relay, (*pkt)->suite, url, hugecont, sizeof(hugecont) - 1, 64);
     }
-//#endif
+#endif
 
     ccnl_free(s);
 

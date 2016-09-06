@@ -38,6 +38,8 @@ struct ccnl_content_s *ccnl_content_remove(struct ccnl_relay_s *ccnl, struct ccn
 int ccnl_flush_cache(struct ccnl_relay_s *ccnl);
 struct ccnl_content_s *ccnl_content_add2cache(struct ccnl_relay_s *ccnl, struct ccnl_content_s *c);
 int ccnl_chunked_content_add2cache(struct ccnl_relay_s *ccnl, int suite, char *url, char *huge_content, int huge_content_len, int chunk_payload_size);
+int ccnl_chunk_add2cache(struct ccnl_relay_s *ccnl, int suite, char *url, char *huge_content, int huge_content_len, int chunk_payload_size, unsigned int chunknum);
+int ccnl_resource_handleInterest(struct ccnl_relay_s *ccnl, int suite, struct ccnl_prefix_s *pfx);
 int ccnl_content_serve_pending(struct ccnl_relay_s *ccnl, struct ccnl_content_s *c);
 void ccnl_do_ageing(void *ptr, void *dummy);
 int ccnl_nonce_find_or_append(struct ccnl_relay_s *ccnl, struct ccnl_buf_s *nonce);

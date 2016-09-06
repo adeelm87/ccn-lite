@@ -25,6 +25,7 @@
 #include "ccnl-ext.h"
 #include "ccnl-pkt-ndntlv.h"
 
+
 #ifndef USE_NFN
 # define ccnl_nfn_interest_remove(r,i)  ccnl_interest_remove(r,i)
 #endif
@@ -42,6 +43,7 @@ int ccnl_ccntlv_getHdrLen(unsigned char *data, int len);
 struct ccnl_pkt_s* ccnl_ndntlv_bytes2pkt(unsigned int pkttype, unsigned char *start, unsigned char **data, int *datalen);
 int ccnl_ndntlv_prependContent(struct ccnl_prefix_s *name, unsigned char *payload, int paylen, int *contentpos, unsigned int *final_block_id, int *offset, unsigned char *buf);
 int ccnl_ndntlv_dehead(unsigned char **buf, int *len, int *typ, int *vallen);
+int ccnl_resource_handleInterest(struct ccnl_relay_s *ccnl, int suite, struct ccnl_prefix_s *pfx);
 
 // ----------------------------------------------------------------------
 // datastructure support functions
@@ -879,6 +881,127 @@ ccnl_chunked_content_add2cache(struct ccnl_relay_s *ccnl, int suite, char *url, 
 
 		}
 		chunknum++;
+		free_prefix(name);
+	}
+
+	return 0;
+}
+
+int
+ccnl_chunk_add2cache(struct ccnl_relay_s *ccnl, int suite, char *url, char *huge_content, int huge_content_len, int chunk_payload_size, unsigned int chunknum) {
+
+	char chunk_without_hdr[chunk_payload_size];
+	int chunk_without_hdr_len;
+	/* 100 has been added for the CCN headers, make this neater later */
+	unsigned char chunk_with_hdr[chunk_payload_size + 100];
+	int chunk_with_hdr_len;
+
+	struct ccnl_prefix_s *name;
+	int is_last = 0;
+	int offs = chunk_payload_size + 100;
+
+	unsigned int index = chunknum * chunk_payload_size;
+	if(index < huge_content_len) {
+
+		if(index + chunk_payload_size <= huge_content_len)
+			chunk_without_hdr_len = chunk_payload_size;
+		else {
+			chunk_without_hdr_len = huge_content_len - index;
+			is_last = 1;
+		}
+
+		strncpy(chunk_without_hdr, huge_content + index, chunk_without_hdr_len);
+		index += chunk_without_hdr_len;
+
+		name = ccnl_URItoPrefix(url, suite, NULL, &chunknum);
+
+		/* Silencing warning errors */
+		(void)chunk_with_hdr;
+		(void)chunk_with_hdr_len;
+		(void)offs;
+		(void)name;
+
+		switch (suite) {
+#ifdef USE_SUITE_CCNTLV
+		case CCNL_SUITE_CCNTLV: {
+			chunk_with_hdr_len = ccnl_ccntlv_prependContentWithHdr(	name,
+															(unsigned char *)chunk_without_hdr,
+															chunk_without_hdr_len,
+															is_last ? &chunknum : NULL,
+															NULL,
+															&offs,
+															chunk_with_hdr);
+
+			struct ccnl_pkt_s *ccnl_pkt = NULL;
+
+			/* Is this really fixed header? Check. It is 8 bytes in size */
+			int fxdhdrlen = ccnl_ccntlv_getHdrLen(&chunk_with_hdr[offs], chunk_with_hdr_len);
+			unsigned char *chunk_without_fxdhdr = &chunk_with_hdr[offs + fxdhdrlen];
+			int chunk_without_fxdhdr_len = chunk_with_hdr_len;
+			chunk_without_fxdhdr_len -= fxdhdrlen;
+
+			ccnl_pkt = ccnl_ccntlv_bytes2pkt(	&chunk_with_hdr[offs],
+												&chunk_without_fxdhdr,
+												&chunk_without_fxdhdr_len);
+
+			struct ccnl_content_s *c = 0;
+			c = ccnl_content_new(ccnl, &ccnl_pkt);
+			if (!c) {
+				DEBUGMSG(WARNING, "could not create content\n");
+				return -1;
+			}
+
+			ccnl_content_add2cache(ccnl, c);
+			c->flags |= CCNL_CONTENT_FLAGS_STATIC;
+
+	        free_packet(ccnl_pkt);
+			break;
+		}
+#endif
+#ifdef USE_SUITE_NDNTLV
+		case CCNL_SUITE_NDNTLV: {
+			chunk_with_hdr_len = ccnl_ndntlv_prependContent(name,
+			                                 (unsigned char *)chunk_without_hdr,
+											 chunk_without_hdr_len,
+			                                 NULL,
+											 is_last ? &chunknum : NULL,
+			                                 &offs,
+											 chunk_with_hdr);
+
+			struct ccnl_pkt_s *ccnl_pkt = NULL;
+
+			unsigned int typ;
+			int len;
+
+			unsigned char *chunk_without_fxdhdr = &chunk_with_hdr[offs];
+			int chunk_without_fxdhdr_len = chunk_with_hdr_len;
+
+			if (ccnl_ndntlv_dehead(&chunk_without_fxdhdr, &chunk_without_fxdhdr_len, (int*)&typ, &len) || typ != NDN_TLV_Data) {
+				DEBUGMSG(WARNING, "not a content object\n");
+				break;
+			}
+			ccnl_pkt = ccnl_ndntlv_bytes2pkt(typ, &chunk_with_hdr[offs], &chunk_without_fxdhdr, &chunk_without_fxdhdr_len);
+
+			struct ccnl_content_s *c = 0;
+			c = ccnl_content_new(ccnl, &ccnl_pkt);
+			if (!c) {
+				DEBUGMSG(WARNING, "could not create content\n");
+				return -1;
+			}
+
+			ccnl_content_add2cache(ccnl, c);
+			c->flags |= CCNL_CONTENT_FLAGS_STATIC;
+
+			free_packet(ccnl_pkt);
+			break;
+		}
+#endif
+		default:
+			DEBUGMSG(ERROR, "produce for suite %i is not implemented\n", suite);
+			return -1;
+
+		}
+		free_prefix(name);
 	}
 
 	return 0;
@@ -1114,6 +1237,10 @@ ccnl_nonce_isDup(struct ccnl_relay_s *relay, struct ccnl_pkt_s *pkt)
 #include "ccnl-pkt-localrpc.c" // must come after pkt-ndntlv.c
 
 #include "ccnl-core-fwd.c"
+
+#ifdef SENSOR_DEV
+#include "ccnl-resources.c"
+#endif
 
 struct ccnl_suite_s ccnl_core_suites[CCNL_SUITE_LAST];
 

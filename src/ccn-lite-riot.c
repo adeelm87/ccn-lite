@@ -426,6 +426,9 @@ void
 kernel_pid_t
 ccnl_start(void)
 {
+#ifdef SENSOR_DEV
+    ccnl_relay.max_cache_entries = -1;
+#endif
     loopback_face = ccnl_get_face_or_create(&ccnl_relay, -1, NULL, 0);
     loopback_face->flags |= CCNL_FACE_FLAGS_STATIC;
     /* start the CCN-Lite event-loop */

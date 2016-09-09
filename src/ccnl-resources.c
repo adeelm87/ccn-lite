@@ -21,6 +21,40 @@ int ccnl_resources_initialized = 0;
 
 #define MAX_CHUNK_SIZE 64
 
+/*!
+ * Checks whether the user button on the stm32f4-discovery board is pressed.
+ * (need "periph/gpio.h" included).
+ *
+ * @note 		Need to call gpio_init(GPIO_PIN(PORT_A, 0), GPIO_IN), before 
+ * 				first usage
+ *
+ * @return		Returns 1 if pressed, 0 otherwise
+ */
+int read_button(void){
+	if (gpio_read(GPIO_PIN(PORT_A, 0)) != 0)
+		return 1;
+	return 0;
+}
+
+/*!
+ * Very elaborate function to simulate the current temperature, it is almost as
+ * if it is the real temperature. (Ranges from 18 - 22) (need "random.h" included)
+ *
+ * @return 		An int representing the current temperature in Celsius
+ */
+int read_temperature(void){
+	int base_temp = 20, sign, delta, temp;
+	sign  = random_uint32() % 2;
+	delta = random_uint32() % 3;
+
+	if (sign)
+		temp = base_temp - delta;
+	else
+		temp = base_temp + delta;
+
+	return temp;
+}
+
 /*
  * This function will be called for each on-board sensor
  * only at initialization.

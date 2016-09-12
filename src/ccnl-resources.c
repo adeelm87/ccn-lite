@@ -237,7 +237,8 @@ int ccnl_resource_handleInterest(struct ccnl_relay_s *ccnl, int suite, struct cc
 	if(*pfx->chunknum == 0) {
 		if(!cr->has_active_data) {
 			/* Replace generate_data() with Joakim's ABE encryption function */
-			generate_data(cr->data, &cr->data_len);
+			cr->data_len = sizeof(ct->data);
+			format_symm_enc_latest_key(cr->data, &cr->data_len, 't', read_temperature());
 			cr->has_active_data = 1;
 		}
 	}

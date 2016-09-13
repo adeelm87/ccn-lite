@@ -789,7 +789,7 @@ ccnl_chunked_content_add2cache(struct ccnl_relay_s *ccnl, int suite, char *url, 
 			is_last = 1;
 		}
 
-		strncpy(chunk_without_hdr, huge_content + index, chunk_without_hdr_len);
+		memcpy(chunk_without_hdr, huge_content + index, chunk_without_hdr_len);
 		index += chunk_without_hdr_len;
 
 		name = ccnl_URItoPrefix(url, suite, NULL, &chunknum);
@@ -910,7 +910,7 @@ ccnl_chunk_add2cache(struct ccnl_relay_s *ccnl, int suite, char *url, char *huge
 			is_last = 1;
 		}
 
-		strncpy(chunk_without_hdr, huge_content + index, chunk_without_hdr_len);
+		memcpy(chunk_without_hdr, huge_content + index, chunk_without_hdr_len);
 		index += chunk_without_hdr_len;
 
 		name = ccnl_URItoPrefix(url, suite, NULL, &chunknum);

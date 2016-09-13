@@ -4,6 +4,9 @@
  *  Created on: Sep 5, 2016
  *      Author: adeel
  */
+#include "abe_relic.h"
+#include "random.h"
+#include "periph/gpio.h"
 
 struct ccnl_resource {
 	struct ccnl_resource *next, *prev;
@@ -237,8 +240,10 @@ int ccnl_resource_handleInterest(struct ccnl_relay_s *ccnl, int suite, struct cc
 	if(*pfx->chunknum == 0) {
 		if(!cr->has_active_data) {
 			/* Replace generate_data() with Joakim's ABE encryption function */
-			cr->data_len = sizeof(ct->data);
-			format_symm_enc_latest_key(cr->data, &cr->data_len, 't', read_temperature());
+//			generate_data(cr->data, &cr->data_len);
+			cr->data_len = sizeof(cr->data);
+			format_symm_enc_latest_key((uint8_t*)cr->data, &cr->data_len, 't',
+					read_temperature());
 			cr->has_active_data = 1;
 		}
 	}
@@ -268,3 +273,4 @@ int ccnl_resource_handleInterest(struct ccnl_relay_s *ccnl, int suite, struct cc
 
 	return 1;
 }
+

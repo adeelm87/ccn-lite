@@ -263,10 +263,10 @@ int ccnl_resource_handleInterest(struct ccnl_relay_s *ccnl, int suite, struct cc
 			cr->data_len = sizeof(cr->data);
 			if (strcmp(cr->prefix, "/co2") == 0){
 				format_symm_enc_latest_key((uint8_t*)cr->data, &cr->data_len,
-						't', read_co2(), 0);
+						'c', read_co2());
 			}else if (strcmp(cr->prefix, "/temperature") == 0){
 				format_symm_enc_latest_key((uint8_t*)cr->data, &cr->data_len,
-						't', read_temperature(), 1);
+						't', read_temperature());
 			}
 			cr->has_active_data = 1;
 		}

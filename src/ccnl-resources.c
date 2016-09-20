@@ -13,7 +13,7 @@ struct ccnl_resource {
 	/* prefix will be of the form /accelerometer */
 	char prefix[50];
 	int prefix_len;
-	char data[10 * 1024]; //Max ABE data = 10 KB
+	char data[5 * 1024]; //Max ABE data = 10 KB
 	int data_len;
 	int latest_seq_no;
 	int has_active_data;
@@ -33,11 +33,11 @@ int ccnl_resources_initialized = 0;
  *
  * @return		Returns 1 if pressed, 0 otherwise
  */
-int read_button(void){
-	if (gpio_read(GPIO_PIN(PORT_A, 0)) != 0)
-		return 1;
-	return 0;
-}
+//int read_button(void){
+//	if (gpio_read(GPIO_PIN(PORT_A, 0)) != 0)
+//		return 1;
+//	return 0;
+//}
 
 /*!
  * Very elaborate function to simulate the current temperature, it is almost as
@@ -56,6 +56,25 @@ int read_temperature(void){
 		temp = base_temp + delta;
 
 	return temp;
+}
+
+/*!
+ * Very elaborate function to simulate the current CO2 level, it is almost as
+ * if it is the real CO2 level. (Ranges from 395 - 403) (need "random.h" included)
+ *
+ * @return 		An int representing the current CO2 level in ppm
+ */
+int read_co2(void){
+	int base_co2 = 399, sign, delta, co2_level;
+	sign  = random_uint32() % 2;
+	delta = random_uint32() % 5;
+
+	if (sign)
+		co2_level = base_co2 - delta;
+	else
+		co2_level = base_co2 + delta;
+
+	return co2_level;
 }
 
 /*
@@ -99,7 +118,7 @@ struct ccnl_resource* ccnl_get_resource(char *prefix) {
 
 void ccnl_resource_init(void) {
 	if(!ccnl_resources_initialized) {
-		ccnl_add_resource("/accelerometer");
+		ccnl_add_resource("/co2");
 		ccnl_add_resource("/temperature");
 		ccnl_resources_initialized = 1;
 	}
@@ -242,8 +261,13 @@ int ccnl_resource_handleInterest(struct ccnl_relay_s *ccnl, int suite, struct cc
 			/* Replace generate_data() with Joakim's ABE encryption function */
 //			generate_data(cr->data, &cr->data_len);
 			cr->data_len = sizeof(cr->data);
-			format_symm_enc_latest_key((uint8_t*)cr->data, &cr->data_len, 't',
-					read_temperature());
+			if (strcmp(cr->prefix, "/co2") == 0){
+				format_symm_enc_latest_key((uint8_t*)cr->data, &cr->data_len,
+						't', read_co2(), 0);
+			}else if (strcmp(cr->prefix, "/temperature") == 0){
+				format_symm_enc_latest_key((uint8_t*)cr->data, &cr->data_len,
+						't', read_temperature(), 1);
+			}
 			cr->has_active_data = 1;
 		}
 	}

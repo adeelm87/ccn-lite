@@ -41,7 +41,7 @@ ccnl_fwd_handleContent(struct ccnl_relay_s *relay, struct ccnl_face_s *from,
                   ccnl_suite2str((*pkt)->suite),
                   ccnl_addr2ascii(from ? &from->peer : NULL));
 #endif
-    ccnl_free(s);
+    //ccnl_free(s);
 
 #if defined(USE_SUITE_CCNB) && defined(USE_SIGNATURES)
 //  FIXME: mgmt messages for NDN and other suites?
@@ -79,7 +79,21 @@ ccnl_fwd_handleContent(struct ccnl_relay_s *relay, struct ccnl_face_s *from,
         free_content(c);
         return 0;
     }
-    if (relay->max_cache_entries != 0) { // it's set to -1 or a limit
+
+    /* Hack to disable caching for prefix /.../latest */
+    int s_len = strlen(s);
+    char latest_str[] = "latest";
+    int latest_str_len = strlen(latest_str);
+    int i, pfx_is_latest = 0;
+    for(i = 0; i <= s_len - latest_str_len; i++) {
+    	if(!strncmp(s + i, latest_str, latest_str_len)) {
+    		pfx_is_latest = 1;
+    		break;
+    	}
+    }
+    ccnl_free(s);
+
+    if (!pfx_is_latest && relay->max_cache_entries != 0) { // it's set to -1 or a limit
         DEBUGMSG_CFWD(DEBUG, "  adding content to cache\n");
         if (ccnl_content_add2cache(relay, c) == NULL) {
             DEBUGMSG_CFWD(WARNING, "  adding to cache failed, discard packet\n");

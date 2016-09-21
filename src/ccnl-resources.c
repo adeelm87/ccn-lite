@@ -25,30 +25,28 @@ int ccnl_resources_initialized = 0;
 #define MAX_CHUNK_SIZE 64
 
 /*!
- * Checks whether the user button on the stm32f4-discovery board is pressed.
- * (need "periph/gpio.h" included).
+ * Very elaborate function to simulate the current body temperature, it is
+ * almost as if it is the real body temperature. (Ranges from 36 - 38 if state
+ * is 0, or from 39 - 41 if state is 1 (i.e. red health status))
+ * (need "random.h" included)
  *
- * @note 		Need to call gpio_init(GPIO_PIN(PORT_A, 0), GPIO_IN), before 
- * 				first usage
- *
- * @return		Returns 1 if pressed, 0 otherwise
- */
-//int read_button(void){
-//	if (gpio_read(GPIO_PIN(PORT_A, 0)) != 0)
-//		return 1;
-//	return 0;
-//}
-
-/*!
- * Very elaborate function to simulate the current temperature, it is almost as
- * if it is the real temperature. (Ranges from 18 - 22) (need "random.h" included)
- *
- * @return 		An int representing the current temperature in Celsius
+ * @return 		An int representing the current body temperature in Celsius
  */
 int read_temperature(void){
-	int base_temp = 20, sign, delta, temp;
+	int base_temp, sign, delta, temp, prob;
 	sign  = random_uint32() % 2;
-	delta = random_uint32() % 3;
+	delta = random_uint32() % 2;
+
+	if (get_state()){
+		/* 1/64 will never happen anyway.. */
+		prob  = random_uint32() % 64;
+		if (prob == 1)
+			return -22;
+
+		base_temp = 40;
+	}else{
+		base_temp = 37;
+	}
 
 	if (sign)
 		temp = base_temp - delta;
@@ -75,6 +73,41 @@ int read_co2(void){
 		co2_level = base_co2 + delta;
 
 	return co2_level;
+}
+/*!
+ * A very real and efficient approximation of the heartrate of the current
+ * patient. It does even depend on the current state.
+ * State 0: Varies between 60-100
+ * State 1: Varies from 30-70 or 90-130
+ *
+ * @return 	Returns the heartrate in bpm
+ */
+int read_heartrate(void){
+	int base_rate = 80, sign, sign2, delta, offset, prob, rate;
+	sign  = random_uint32() % 2;
+	sign2 = random_uint32() % 2;
+	delta = random_uint32() % 21;
+	prob  = random_uint32() % 64;
+
+	if (get_state()){
+		prob  = random_uint32() % 64;
+		if (prob == 1)
+			return 0;
+
+		offset = 30;
+		if (sign2)
+			base_rate += offset;
+		else
+			base_rate -= offset;
+	}
+
+	if (sign)
+		rate = base_rate - delta;
+	else
+		rate = base_rate + delta;
+
+
+	return rate;
 }
 
 /*
@@ -118,8 +151,11 @@ struct ccnl_resource* ccnl_get_resource(char *prefix) {
 
 void ccnl_resource_init(void) {
 	if(!ccnl_resources_initialized) {
-		ccnl_add_resource("/co2");
-		ccnl_add_resource("/temperature");
+#ifdef SENSOR_DEV_IS_MA
+			ccnl_add_resource("/heartrate");
+#else
+			ccnl_add_resource("/temperature");
+#endif
 		ccnl_resources_initialized = 1;
 	}
 }
@@ -260,18 +296,26 @@ int ccnl_resource_handleInterest(struct ccnl_relay_s *ccnl, int suite, struct cc
 		if(!cr->has_active_data) {
 			/* Replace generate_data() with Joakim's ABE encryption function */
 //			generate_data(cr->data, &cr->data_len);
+			int data = 0;
+			char type = '\0';
 			cr->data_len = sizeof(cr->data);
-			if (strcmp(cr->prefix, "/co2") == 0){
-				format_symm_enc_latest_key((uint8_t*)cr->data, &cr->data_len,
-						'c', read_co2());
-			}else if (strcmp(cr->prefix, "/temperature") == 0){
-				format_symm_enc_latest_key((uint8_t*)cr->data, &cr->data_len,
-						't', read_temperature());
+
+#ifdef SENSOR_DEV_IS_MA
+			if (strcmp(cr->prefix, "/heartrate") == 0){
+				data = read_heartrate();
+				type = 'a';
 			}
+#else
+			if (strcmp(cr->prefix, "/temperature") == 0){
+				data = read_temperature();
+				type = 't';
+			}
+#endif
+			format_symm_enc_latest_key((uint8_t*)cr->data, &cr->data_len,
+									type, data);
 			cr->has_active_data = 1;
 		}
-	}
-	else {
+	} else {
 		if(!cr->has_active_data)
 			return 0;
 	}

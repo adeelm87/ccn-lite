@@ -903,7 +903,7 @@ ccnl_chunk_add2cache(struct ccnl_relay_s *ccnl, int suite, char *url, char *huge
 	unsigned int index = chunknum * chunk_payload_size;
 	if(index < huge_content_len) {
 
-		if(index + chunk_payload_size <= huge_content_len)
+		if(index + chunk_payload_size < huge_content_len)
 			chunk_without_hdr_len = chunk_payload_size;
 		else {
 			chunk_without_hdr_len = huge_content_len - index;

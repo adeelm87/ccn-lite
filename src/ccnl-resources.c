@@ -290,7 +290,7 @@ int ccnl_resource_handleInterest(struct ccnl_relay_s *ccnl, int suite, struct cc
 	ccnl_flush_cache(ccnl);
 	ccnl_chunk_add2cache(ccnl, suite, url2, cr->data, cr->data_len, MAX_CHUNK_SIZE, *pfx->chunknum);
 
-	if((*pfx->chunknum + 1) * MAX_CHUNK_SIZE > cr->data_len) {
+	if((*pfx->chunknum + 1) * MAX_CHUNK_SIZE >= cr->data_len) {
 		cr->has_active_data = 0;
 		cr->latest_seq_no++;
 	}
